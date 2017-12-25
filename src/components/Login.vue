@@ -1,33 +1,80 @@
 <template>
     <div class="container">
-        <div class="card card-container">
-            <!-- <img class="profile-img-card" src="//lh3.googleusercontent.com/-6V8xOA6M7BA/AAAAAAAAAAI/AAAAAAAAAAA/rzlHcD0KYwo/photo.jpg?sz=120" alt="" /> -->
+        <!-- <div class="card card-container">
             <img id="profile-img" class="profile-img-card" src="//ssl.gstatic.com/accounts/ui/avatar_2x.png" />
             <p id="profile-name" class="profile-name-card"></p>
-            <form class="form-signin">
+            <form class="form-signin" v-on:submit.prevent="loginAction">
                 <span id="reauth-email" class="reauth-email"></span>
-                <input type="email" id="inputEmail" class="form-control" placeholder="Email address" required autofocus>
-                <input type="password" id="inputPassword" class="form-control" placeholder="Password" required>
+                <input type="email" class="form-control" placeholder="Email address" required autofocus v-model="email">
+                <input type="password" id="inputPassword" class="form-control" placeholder="Password" required v-model="password">
                 <div id="remember" class="checkbox">
                     <label>
                         <input type="checkbox" value="remember-me"> Remember me
                     </label>
                 </div>
                 <button class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
-            </form><!-- /form -->
+            </form>
             <a href="#" class="forgot-password">
                 Forgot the password?
             </a>
-        </div><!-- /card-container -->
+        </div> -->
+        <div class="card card-container">
+            <button class="btn btn-primary" v-on:click="loginAction('fb')">페이스북 로그인</button>
+            <button class="btn btn-danger" v-on:click="loginAction('go')">구글 로그인</button>
+            <button class="btn btn-info" v-on:click="loginAction('github')">깃허브 로그인</button>
+        </div>
     </div><!-- /container -->
 </template>
 
 <script>
+import firebase from 'firebase'
+
 export default {
     name: 'Login',
+
     data() {
         return {
-            message: 'Login'
+            email: '',
+            password: ''
+        }
+    },
+    methods: {
+        loginAction(platform){
+            let auth = firebase.auth()
+            var provider
+
+            if(platform == 'fb'){
+                provider = new firebase.auth.FacebookAuthProvider()
+                provider.addScope('email')
+                provider.addScope('profile')
+            }else if(platform == 'go'){
+                provider = new firebase.auth.GoogleAuthProvider()
+                provider.addScope('email')
+                provider.addScope('profile')
+            }else if (platform == 'github'){
+                provider = new firebase.auth.GithubAuthProvider()
+                provider.addScope('email')
+                provider.addScope('profile')
+            }
+
+
+
+            var self = this
+            auth.signInWithPopup(provider).then(function(result) {
+                // This gives you a Google Access Token.
+                var token = result.credential.accessToken
+                // The signed-in user info.
+                var user = result.user
+
+                console.log(token, user);
+
+                self.$store.dispatch('login', user)
+                location.href = '/'
+                //self.$router.push('TodoList')
+            }).catch(err => {
+                console.log(err)
+                alert(err)
+            })
         }
     }
 }

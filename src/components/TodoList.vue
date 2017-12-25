@@ -2,10 +2,11 @@
 <div id="todo_wrap">
 
     <header id="top_nav">
-        <div class="profile_wrap">
-            <a href="javascript:void(0)">
-                <img src="//ssl.gstatic.com/accounts/ui/avatar_1x.png" class="circle" />
-                <span>userName</span>
+        <div class="profile_wrap" v-if="user">
+            <a href="javascript:void(0)"
+                v-on:click="logoutAction">
+                <img v-bind:src="user.photoURL" class="circle" />
+                <span>{{ user.displayName }}</span>
             </a>
         </div>
         <div class="header_right">
@@ -16,12 +17,25 @@
     <div class="content">
         <section class="left_menu">
             <ul class="list-group">
-                <li v-for="item in list"
-                    class="list-group-item"
+                <li v-for="item in lists"
+                    class="list-group-item justify-content-between"
                     :class="{ active: item.active }"
                     v-on:click.prevent="selectList(item)">
-                    {{item.title}}
+                    {{item.title}} ({{item.todos.length}})
+                    <button type="button"
+                        class="close edit_list"
+                        v-on:click.prevent="openEditMode(item)">
+                        <span class="fa fa-pencil" aria-hidden="true"></span>
+                    </button>
                 </li>
+                <!-- <a  href="javascript:void(0)"
+                    class="list-group-item"
+                    :class="{ active: item.active }"
+                    v-for="item in lists"
+                    v-on:click.prevent="selectList(item)"
+                    v-on:dblclick.prevent="openEditMode(item)">
+                    {{item.title}}
+                </a> -->
             </ul>
             <div class="add_list">
                 <button class="btn-block btn btn-primary" @click="addListItem()">목록추가</button>
@@ -44,7 +58,7 @@
 
             <section class="main" v-cloak>
                  <ul class="todo-list">
-                     <li v-for="todo in selectedList.todos"
+                     <li v-for="todo in filterByImportant"
                         class="todo"
                         :class="{ completed: todo.completed, editing: todo == editedTodo }"
                         @click="toggleMenu($event, todo)">
@@ -73,7 +87,36 @@
                     </li>
                  </ul>
 
-                 <footer class="footer" v-show="todos.length" v-cloak>
+                 <div v-if="completedTodos.length > 0">
+                     <button
+                        type="button"
+                        class="btn btn-sm btn-info"
+                        v-on:click="completedVisible = !completedVisible">
+                        완료된할일 표시
+                    </button>
+
+                     <ul v-if="completedVisible" class="todo-list">
+                         <li v-for="todo in completedTodos"
+                            class="todo completed"
+                            @click="toggleMenu($event, todo)">
+                            <div class="view">
+                                <input class="toggle" type="checkbox" v-model="todo.completed" v-on:change="changeComplete(todo)">
+                                <label @dblclick="editTodo($event, todo)">{{ todo.title }}</label>
+
+                                <div class="float_right">
+                                    <span class="ago">{{ todo.ago }}</span>
+                                    <a class="important" @click="toggleImportant($event, todo)">
+                                        <i class="fa fa-star" v-show="todo.important"></i>
+                                        <i class="fa fa-star-o" v-show="!todo.important"></i>
+                                    </a>
+                                </div>
+                                <!-- <button class="destroy" @click="removeTodo(todo)"></button> -->
+                            </div>
+                        </li>
+                     </ul>
+                 </div>
+
+                 <!-- <footer class="footer" v-show="todos.length" v-cloak>
                     <span class="todo-count">
                         <strong>{{ remaining }}</strong> {{ remaining | pluralize }} left
                     </span>
@@ -103,7 +146,7 @@
                     <button class="clear-completed" @click="removeCompleted" v-show="todos.length > remaining">
                         Clear completed
                     </button>
-                 </footer>
+                 </footer> -->
             </section>
         </div>
 
@@ -119,6 +162,12 @@
                 </div>
             </header>
 
+            <header class="expire-date-setting">
+                <div>
+                    <label>기한설정</label>
+                    <date-picker v-model="selectedTodo.expire_date" :config="config"></date-picker>
+                </div>
+            </header>
             <div class="content">
                 <textarea
                     class="form-control note"
@@ -134,89 +183,35 @@
                 <button class="btn btn-danger" @click="removeTodo(selectedTodo)">삭제</button>
             </footer>
         </section>
-
     </div>
 </div>
 
-
-<!-- <b-alert show>Default Alert</b-alert> -->
-<!-- <b-modal ref="myModalRef" hide-footer title="Using Component Methods">
-
-</b-modal> -->
 </template>
 
 <script>
-import bModal from 'bootstrap-vue/es/components/modal/modal'
-import firebase from 'firebase'
 import moment from 'moment'
 moment.locale('ko')
 
-require("firebase/firestore")
+import firebase from '../firebase'
 
-const firebaseApp = firebase.initializeApp({
-    apiKey: "AIzaSyBUl5GQ30BOzjC8rOfVkmpafs2AM0vJQD8",
-    authDomain: "mytodo-12180.firebaseapp.com",
-    databaseURL: "https://mytodo-12180.firebaseio.com",
-    projectId: "mytodo-12180",
-    storageBucket: "mytodo-12180.appspot.com",
-    messagingSenderId: "880291223630"
+const messaging = firebase.messaging()
+
+messaging.requestPermission()
+.then(() => {
+    console.log('Notification permission granted.')
+    messaging.getToken().then(currentToken => {
+        console.log(currentToken);
+    })
+    // messaging.onMessage(function(payload) {
+    //     console.log("Message received. ", payload);
+    // });
 })
+.catch(function(err) {
+    console.log('Unable to get permission to notify.', err);
+});
 
-var db = firebaseApp.firestore()
-const LIST_COLLECTION = 'List'
-const COLLECTION = 'Todos'
-const STORAGE_KEY = 'MY_TODO'
+
 const todoStorage = {
-    async fetch(){
-        var todos = []
-        return new Promise((resolve, reject) => {
-            db.collection(COLLECTION).orderBy('createdAt', 'desc').get()
-            .then((snap) => {
-                snap.forEach((doc) => {
-                    //console.log(`${doc.id} => ${data.title}`)
-                    let data = doc.data()
-                    let todo = data
-                    todo.id = doc.id
-                    todo.ago = moment(todo.createdAt).fromNow()
-                    todos.push(todo)
-                })
-                resolve(todos)
-            }).catch(err => {
-                reject(err)
-            })
-        })
-    },
-    async fetchList(){
-        var list = []
-        return new Promise((resolve, reject) => {
-            db.collection(LIST_COLLECTION).get()
-            .then((snap) => {
-                snap.forEach((doc) => {
-                    let data = doc.data()
-                    let listItem = data
-                    listItem.id = doc.id
-                    listItem.todos = []
-
-                    db.collection(LIST_COLLECTION).doc(doc.id)
-                    .collection(COLLECTION).orderBy('createdAt').get()
-                    .then((todosSnap) => {
-                        var todos = []
-                        todosSnap.forEach((doc) => {
-                            let data = doc.data()
-                            data.id = doc.id
-                            todos.push(data)
-                        })
-
-                        listItem.todos = todos
-                        list.push(listItem)
-                    })
-                })
-                resolve(list)
-            }).catch(err => {
-                reject(err)
-            })
-        })
-    },
     fetchFromLocal: function () {
         var todos = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
 
@@ -227,122 +222,76 @@ const todoStorage = {
         todoStorage.uid = todos.length
         return todos
     },
-    async save(todo, listId){
-        return db.collection(LIST_COLLECTION).doc(listId).collection(COLLECTION).add(todo)
-        .then(docRef => {
-            //console.log(docRef.id)
-            return docRef.id
-        }).catch(err => {
-            console.log(err)
-        })
-    },
     saveToLocal: function (todos) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
     }
 }
 
-var filters = {
-  all: function (todos) {
-      return todos
-  },
-  active: function (todos) {
-      return todos.filter(function (todo) {
-          return !todo.completed
-      })
-  },
-  completed: function (todos) {
-      return todos.filter(function (todo) {
-          return todo.completed
-      })
-  }
-}
-
 export default {
     name: 'TodoList',
-    route: {
-        activate(a){
-            console.log(a);
-        }
-    },
-    created() {
-        // var todo_wrap = document.querySelector('.todo_wrap')
-        // console.log(todo_wrap);
-        // todo_wrap.addEventListener('click', (e) => {
-        //     this.toggleMenu(e)
-        // }, false)
-        // db.collection(COLLECTION).orderBy('createdAt', 'desc').get()
-        // .then((snap) => {
-        //     snap.forEach((doc) => {
-        //         //console.log(`${doc.id} => ${data.title}`)
-        //         let data = doc.data()
-        //         let todo = data
-        //         todo.id = doc.id
-        //         todo.ago = moment(todo.createdAt).fromNow()
-        //         this.todos.push(todo)
-        //     })
-        // })
 
+    components: {
+    },
+
+    created() {
+        let currentUser = firebase.auth().currentUser
+
+        this.$store.dispatch('setUserData', currentUser)
+        this.$store.dispatch('fetchList')
     },
     data() {
-
-        console.log(this.$root.$data);
-
-        todoStorage.fetchList().then(list => {
-            this.list = list
-        })
-
-        // todoStorage.fetch().then(todos => {
-        //     //this.todos = todos
-        // })
-
+        let config = {
+            minDate: moment().startOf('day'),
+            format: 'YYYY-MM-DD',
+            useCurrent: false,
+            //showClose: true,
+            //showClear: true,
+            locale: 'ko',
+            icons: {
+                time: 'glyphicon glyphicon-time'
+            }
+        }
         this.defaultTodoModel = {
             id: null,
             title: '',
             important: false,
-            completed:false
+            completed:false,
+            expire_date: new Date()
         }
 
         return {
-            list: [],
-            todos: [], //todoStorage.fetch(),
+            config: config,
             newTodo: '',
             editedTodo: null,
-            visibility: 'all',
+            //visibility: 'active',
+            completedVisible: false,
             selectedTodo: this.defaultTodoModel,
             selectedList: null,
             activeMenu: false
         }
     },
-    watch: {
-        // todos: {
-        //     handler(todos, oldTodos) {
-        //         let newTodo = todos.filter(todo => oldTodos.indexOf(todo) < 0)
-        //         //todoStorage.save(todos)
-        //
-        //         console.log(newTodo);
-        //     },
-        //     deep: true
-        // }
-    },
     computed: {
-        filteredTodos: function () {
-            let todos = this.selectedList ? this.selectedList.todos : []
-            //console.log(todos);
-            return filters[this.visibility](todos)
-            //return _.orderBy(filters[this.visibility](this.todos), 'important')
+        user() {
+            return this.$store.state.user
         },
-        remaining: function () {
-            return filters.active(this.todos).length
+        lists(){
+            return this.$store.state.lists
         },
-        allDone: {
-            get: function () {
-                return this.remaining === 0
-            },
-            set: function (value) {
-                this.todos.forEach(function (todo) {
-                    todo.completed = value
-                })
-            }
+        filterByImportant(){
+            if( !this.selectedList ) return []
+
+            return this.selectedList.todos.filter(todo => {
+                return !todo.completed
+            })
+            .sort((a, b) => a.createdAt < b.createdAt)
+            .sort((a, b) => a.important < b.important)
+        },
+        completedTodos(){
+            if( !this.selectedList ) return []
+
+            return this.selectedList.todos.filter(todo => {
+                return todo.completed
+            })
         }
     },
     filters: {
@@ -351,126 +300,77 @@ export default {
        }
     },
     methods: {
-        changeComplete(todo){
-            this.updateTodo(todo).then(success => {
-                if( !success ){
-                    todo.completed = !todo.completed
-                }
-            })
-        },
         addTodo(e) {
             let title = this.newTodo && this.newTodo.trim()
             if (!title) {
                 return
             }
 
-            let time = moment().toDate()
+            this.newTodo = null
 
-            let todoItem = {
-                //id: todoStorage.id,
+            let todo = {
                 title: title,
                 completed: false,
-                important: false,
-                createdAt: time,
-                ago: moment(time).fromNow()
+                important: false
             }
-
-            //this.todos.push( todoItem )
-            //this.todos.unshift( todoItem )
-            //this.newTodo = ''
-
-            todoStorage.save( todoItem, this.selectedList.id )
-            .then(id => {
-                if( id ){
-                    this.newTodo = ''
-                    todoItem.id = id
-                    this.selectedList.todos.push(todoItem)
-                }
+            this.$store.dispatch('addTodo', {
+                listItem: this.selectedList,
+                todo
             })
-        },
-        editTodo: function (e, todo) {
-            e.stopPropagation()
-
-            this.beforeEditCache = todo.title
-            this.editedTodo = todo
         },
         removeTodo: function (todo) {
             if( !this.selectedList || !todo.id ) return
 
-            db.collection(LIST_COLLECTION).doc(this.selectedList.id)
-            .collection(COLLECTION).doc(todo.id).delete()
-            .then(() => {
-                this.selectedList.todos.splice(this.selectedList.todos.indexOf(todo), 1)
+            this.$store.dispatch('removeTodo', {
+                listItem: this.selectedList,
+                todo: todo
+            }).then(() => {
                 this.activeMenu = false
             }).catch(err => {
-                console.log(err)
+                console.log(err);
             })
         },
-        doneEdit: function (todo) {
-            if (!this.editedTodo) {
-                return
-            }
-            this.editedTodo = null
-            // todo.title = todo.title.trim()
-            //
-            if (!todo.title) {
-                this.removeTodo(todo)
-                return
-            }
-
-            this.updateTodo(todo).then(success => {
-                if( success ){
-                    todo.title = todo.title.trim()
-                }
-            })
+        editTodo: function (e, todo) {
+            e.stopPropagation()
+            this.beforeEditCache = todo.title
+            this.editedTodo = todo
         },
         cancelEdit: function (todo) {
             this.editedTodo = null
             todo.title = this.beforeEditCache
         },
-        removeCompleted: function () {
-            let completeds = filters.completed(this.todos)
-            completeds.forEach((todo) => {
-                db.collection(COLLECTION).doc(todo.id).delete()
-                .then(() => {
-                    this.todos = filters.active(this.todos)
-                }).catch(err => {
-                    console.log(err)
-                })
-            })
-            //this.todos = filters.active(this.todos)
-        },
-        async updateTodo(todo){
+        // removeCompleted: function () {
+        //     let completeds = filters.completed(this.todos)
+        //     completeds.forEach((todo) => {
+        //         db.collection(COLLECTION).doc(todo.id).delete()
+        //         .then(() => {
+        //             this.todos = filters.active(this.todos)
+        //         }).catch(err => {
+        //             console.log(err)
+        //         })
+        //     })
+        //     //this.todos = filters.active(this.todos)
+        // },
+        updateTodo(todo){
             if( !this.selectedList ) return
 
-            return db.collection(LIST_COLLECTION).doc(this.selectedList.id)
-            .collection(COLLECTION).doc(todo.id).update(todo)
-            .then(() => {
-                console.log('updated successfully!');
-                return true
-            }).catch(err => {
-                console.log(err)
-                return false
+            this.$store.dispatch('updateTodo', {
+                listItem: this.selectedList,
+                todo: todo
             })
         },
-
-        changeState(state){
-            this.visibility = state
+        changeComplete(todo){
+            this.updateTodo(todo)
         },
         toggleImportant(e, todo){
             e.stopPropagation()
 
             todo.important = !todo.important
-
-            // let data = {
-            //     id: todo.id,
-            //     important: !todo.important
-            // }
-            this.updateTodo(todo).then(success => {
-                if( !success ){
-                    todo.important = !todo.important
-                }
-            })
+            this.updateTodo(todo)
+        },
+        updateNote(todo){
+            //if( !todo.note || todo.note.length < 1 ) return
+            this.updateTodo(todo)
         },
         toggleMenu(e, todo){
             e.stopPropagation()
@@ -478,41 +378,73 @@ export default {
             this.selectedTodo = todo || this.defaultTodoModel
             this.activeMenu = !!todo
         },
-        updateNote(todo){
-            //if( !todo.note || todo.note.length < 1 ) return
-            this.updateTodo(todo).then(success => {
-                if( !success ){
-                    todo.note = null
-                }
-            })
+        doneEdit: function (todo) {
+            if (!this.editedTodo) {
+                return
+            }
+            this.editedTodo = null
+            if (!todo.title) {
+                this.removeTodo(todo)
+                return
+            }
+
+            todo.title = todo.title.trim()
+            this.updateTodo(todo)
         },
+
         addListItem(){
             let title = prompt('타이틀 작성')
-            if( title ){
-                let data = {
-                    title: title,
-                    active: false,
-                    todos: []
-                }
-                db.collection(LIST_COLLECTION).add(data)
-                .then((snap) => {
-                    //console.log(snap.id);
-                    data.id = snap.id
-                    this.list.push(data)
-                }).catch(err => {
-                    console.log(err);
-                })
-            }
+            if( !title ) return
+
+            this.$store.dispatch('addListItem', title)
         },
         selectList(item){
+            this.$store.dispatch('fetchTodos', item)
+
             this.resetActiveList()
             item.active = true
             this.selectedList = item
         },
         resetActiveList(){
-            this.list.forEach((item) => {
+            this.lists.forEach((item) => {
                 item.active = false
             })
+        },
+        logoutAction(){
+            if( confirm('로그아웃 하시겠습니까?') ){
+                this.$store.dispatch('logout')
+            }
+        },
+        openEditMode(listItem){
+            let openFn = () => {
+                let title = prompt('타이틀을 입력해주세요!', listItem.title)
+                if(!title) return
+
+                const data = listItem
+                data.title = title
+                this.$store.dispatch('updateeListItem', {
+                    listItem,
+                    data
+                })
+            }
+
+            let closeFn = () => {
+                this.$store.dispatch('removeListItem', listItem)
+            }
+
+            let obj = {
+                title: '수정/삭제',
+                message: '타이틀을 수정하세겠습니까?(수정) 삭제하시겠습니까?(삭제)',
+                type: 'success',
+                showXclose: true,
+                useConfirmBtn: true,
+                onConfirm: openFn,
+                customConfirmBtnText: '수정',
+                customCloseBtnText: '삭제',
+                onClose: closeFn
+                //customCloseBtnClass: 'btn-danger'
+            }
+            this.$Simplert.open(obj)
         }
     },
     directives: {
@@ -579,7 +511,8 @@ section.left_menu{
     -webkit-box-orient: vertical;
     flex-direction: column;
 }
-section.left_menu ul{
+section.left_menu .list-group {
+    border-radius: 0;
     display: flex;
     -webkit-box-orient: vertical;
     flex-direction: column;
@@ -587,8 +520,29 @@ section.left_menu ul{
     box-flex:1;
     flex: 1;
 }
-section.left_menu ul li{
+section.left_menu .list-group > li,
+section.left_menu .list-group > a,
+section.left_menu .list-group > button{
     border-radius: 0;
+    cursor: pointer;
+    xborder: 0;
+    xborder-bottom:1px solid rgba(0, 0, 0, 0.125);
+}
+section.left_menu .list-group > li:first-child{
+    border-top: 0;
+}
+section.left_menu .list-group .list-group-item.active{
+
+}
+section.left_menu .list-group > li .edit_list{
+    position: absolute;
+    top:0;
+    bottom:0;
+    right: 0;
+    width: 34px;
+    background-color: white;
+    opacity: 1;
+    border-left: 1px solid;
 }
 section.left_menu .add_list button{
     border-radius: 0;
@@ -689,5 +643,19 @@ section.right_hidden .content textarea {
 section.right_hidden footer{
     background: white;
     padding: 10px;
+}
+
+/* .expire-date-setting > div{
+    display: flex
+} */
+.expire-date-setting > div > label {
+    font-size:16px !important;
+    flex: none !important;
+}
+.expire-date-setting input{
+    background: none;
+    border:0;
+    box-shadow: none;
+    flex:1
 }
 </style>
