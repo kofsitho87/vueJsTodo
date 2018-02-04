@@ -194,21 +194,21 @@ moment.locale('ko')
 
 import firebase from '../firebase'
 
-const messaging = firebase.messaging()
+// const messaging = firebase.messaging()
 
-messaging.requestPermission()
-.then(() => {
-    console.log('Notification permission granted.')
-    messaging.getToken().then(currentToken => {
-        console.log(currentToken);
-    })
-    // messaging.onMessage(function(payload) {
-    //     console.log("Message received. ", payload);
-    // });
-})
-.catch(function(err) {
-    console.log('Unable to get permission to notify.', err);
-});
+// messaging.requestPermission()
+// .then(() => {
+//     console.log('Notification permission granted.')
+//     messaging.getToken().then(currentToken => {
+//         console.log(currentToken);
+//     })
+//     // messaging.onMessage(function(payload) {
+//     //     console.log("Message received. ", payload);
+//     // });
+// })
+// .catch(function(err) {
+//     console.log('Unable to get permission to notify.', err);
+// });
 
 
 const todoStorage = {
@@ -486,7 +486,7 @@ export default {
 }
 
 #todo_wrap{
-    overflow-y: auto;
+    
     position: relative;
     height: 100%;
 }
@@ -501,6 +501,7 @@ export default {
 }
 
 .todo_wrap{
+    overflow-y: auto;
     flex:1;
     padding: 10px;
 }
