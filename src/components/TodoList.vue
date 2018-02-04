@@ -486,6 +486,7 @@ export default {
 }
 
 #todo_wrap{
+    overflow-y: auto;
     position: relative;
     height: 100%;
 }
