@@ -1,23 +1,5 @@
 <template>
     <div class="container">
-        <!-- <div class="card card-container">
-            <img id="profile-img" class="profile-img-card" src="//ssl.gstatic.com/accounts/ui/avatar_2x.png" />
-            <p id="profile-name" class="profile-name-card"></p>
-            <form class="form-signin" v-on:submit.prevent="loginAction">
-                <span id="reauth-email" class="reauth-email"></span>
-                <input type="email" class="form-control" placeholder="Email address" required autofocus v-model="email">
-                <input type="password" id="inputPassword" class="form-control" placeholder="Password" required v-model="password">
-                <div id="remember" class="checkbox">
-                    <label>
-                        <input type="checkbox" value="remember-me"> Remember me
-                    </label>
-                </div>
-                <button class="btn btn-lg btn-primary btn-block btn-signin" type="submit">Sign in</button>
-            </form>
-            <a href="#" class="forgot-password">
-                Forgot the password?
-            </a>
-        </div> -->
         <div class="card card-container">
             <button class="btn btn-primary" v-on:click="loginAction('fb')">페이스북 로그인</button>
             <button class="btn btn-danger" v-on:click="loginAction('go')">구글 로그인</button>
@@ -65,11 +47,10 @@ export default {
                 var token = result.credential.accessToken
                 // The signed-in user info.
                 var user = result.user
-
-                console.log(token, user);
+                user.token = token
 
                 self.$store.dispatch('login', user)
-                location.href = '/'
+                //location.href = '/'
                 //self.$router.push('TodoList')
             }).catch(err => {
                 console.log(err)

@@ -10,5 +10,4 @@ const firebaseApp = firebase.initializeApp({
     messagingSenderId: "880291223630"
 })
 
-
 export default firebaseApp

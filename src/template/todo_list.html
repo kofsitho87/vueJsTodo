@@ -1,0 +1,219 @@
+<div id="todo_wrap">
+    <b-modal id="myModal" ref="addListModal" title="목록추가" @ok="addListItem">
+        <form @submit.stop.prevent="addListItem">
+            <b-form-input type="text" placeholder="목록이름" v-model="addListName"></b-form-input>
+        </form>
+    </b-modal>
+
+    <b-modal ref="modifyListModal" title="목록수정" @ok="modifyListItem" :hide-footer="true" cancel-title="remove">
+        <form @submit.stop.prevent="modifyListItem">
+            <b-form-input ref="modifyInput" type="text" placeholder="목록이름"></b-form-input>
+            <b-button-group style="margin-top:10px">
+                <b-button variant="danger" v-on:click="removeList">삭제</b-button>
+                <b-button variant="primary" v-on:click="modifyListItem">수정</b-button>
+                <b-button variant="success" v-on:click="shareListItem">공유</b-button>
+            </b-button-group>
+        </form>
+    </b-modal>
+
+    <b-modal ref="searchUserModal" title="유저검색" @ok="searchUserAction">
+            <form @submit.stop.prevent="searchUserAction">
+                <b-input-group>
+                    <b-form-input type="email" placeholder="이메일로 검색" v-model="emailKeyword" required></b-form-input>
+                    <b-btn variant="success" type="submit">검색</b-btn>
+                </b-input-group>
+            </form>
+
+            <div style="margin-top:20px">
+                <b-list-group>
+                    <b-list-group-item v-for="user in searchUsers" 
+                        @click="selectShareUser(user)"
+                        class="d-flex justify-content-between align-items-center" button>
+                        {{user.email}}
+                        <b-badge variant="primary" pill>{{user.displayName}}</b-badge>
+                    </b-list-group-item>
+                </b-list-group>
+            </div>
+        </b-modal>
+
+    <header id="top_nav">
+        <div class="profile_wrap" v-if="user">
+            <b-dropdown id="ddown-offset" class="m-3" variant="primary">
+                <template slot="button-content">
+                    <img v-bind:src="user.photoURL" class="circle" />
+                    <span>{{ user.displayName }}</span>
+                </template>
+                <b-dropdown-item-button>프로필</b-dropdown-item-button>
+                <b-dropdown-divider></b-dropdown-divider>
+                <b-dropdown-item-button v-on:click="logoutAction()">로그아웃</b-dropdown-item-button>
+            </b-dropdown>
+        </div>
+        <div class="header_right">
+        </div>  
+    </header>
+
+    <div class="content">
+        <section class="left_menu">
+            <ul class="list-group">
+                <li v-for="item in lists"
+                    class="list-group-item justify-content-between"
+                    :class="{ active: item.active }"
+                    v-on:click.prevent="selectList(item)">
+                    <span class="title">{{item.title}}</span>
+                    <span class="badge badge-light">{{item.todos | activeTodosCount}}</span>
+                    <span v-if="item.todos.length" class="badge badge-danger">{{item.todos | overDueDateTodosCount}}</span>
+
+                    <button type="button"
+                        class="close edit_list"
+                        v-on:click.prevent="openEditMode(item)">
+                        <span class="fa fa-pencil" aria-hidden="true"></span>
+                    </button>
+                </li>
+                <!-- <a  href="javascript:void(0)"
+                    class="list-group-item"
+                    :class="{ active: item.active }"
+                    v-for="item in lists"
+                    v-on:click.prevent="selectList(item)"
+                    v-on:dblclick.prevent="openEditMode(item)">
+                    {{item.title}}
+                </a> -->
+            </ul>
+            <div class="add_list">
+                <button class="btn-block btn btn-primary" @click="showAddListItem()">목록추가</button>
+            </div>
+        </section>
+
+        <div v-if="selectedList" class="todo_wrap">
+            <header class="input_header">
+                <div class="input_wrap">
+                    <form name="todo" v-on:submit.prevent="addTodo">
+                        <b-form-input 
+                            type="text" 
+                            class="new-todo" 
+                            name="new_todo"
+                            v-model="newTodo"
+                            @focus="toggleMenu($event)"
+                            placeholder="할일추가"></b-form-input>
+                        
+                    </form>
+                </div>
+            </header>
+
+            <section class="main" v-cloak>
+                <b-progress height="1.5rem" variant="success" :max="100" show-progress striped :animated="true" class="mb-3">
+                    <b-progress-bar :value="completeListPercentage">
+                        <strong>{{completeListPercentage}}%</strong>
+                    </b-progress-bar>
+                </b-progress>
+                <!-- <div v-if="selectedList" class="progress" style="margin-bottom:30px;height:24px;">
+                    <div class="progress-bar bg-success" role="progressbar" v-bind:style="{ 'width': '25%' }" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+                </div> -->
+
+                 <ul class="todo-list">
+                     <li v-for="todo in filterByImportant"
+                        class="todo"
+                        :class="{ completed: todo.completed, editing: todo == editedTodo }"
+                        @click="toggleMenu($event, todo)">
+
+                        <div class="view">
+                            <input class="toggle" type="checkbox" v-model="todo.completed" v-on:change="changeComplete(todo)">
+                            <label @dblclick="editTodo($event, todo)">{{ todo.title }}</label>
+
+                            <div class="float_right">
+                                <span class="ago">{{ todo.ago }}</span>
+                                <a class="important" @click="toggleImportant($event, todo)">
+                                    <i class="fa fa-star" v-show="todo.important"></i>
+                                    <i class="fa fa-star-o" v-show="!todo.important"></i>
+                                </a>
+                            </div>
+                            <!-- <button class="destroy" @click="removeTodo(todo)"></button> -->
+                        </div>
+
+                        <input type="text"
+                            class="form-control edit"
+                            v-model="todo.title"
+                            v-todo-focus="todo == editedTodo"
+                            @blur="doneEdit(todo)"
+                            @keyup.enter="doneEdit(todo)"
+                            @keyup.esc="cancelEdit(todo)" />
+                    </li>
+                 </ul>
+
+                 <div v-if="completedTodos.length > 0">
+                     <button
+                        type="button"
+                        class="btn btn-sm btn-info"
+                        v-on:click="completedVisible = !completedVisible">
+                        완료된할일 표시
+                    </button>
+
+                     <ul v-if="completedVisible" class="todo-list">
+                         <li v-for="todo in completedTodos"
+                            class="todo completed"
+                            @click="toggleMenu($event, todo)">
+                            <div class="view">
+                                <input class="toggle" type="checkbox" v-model="todo.completed" v-on:change="changeComplete(todo)">
+                                <label @dblclick="editTodo($event, todo)">{{ todo.title }}</label>
+
+                                <div class="float_right">
+                                    <span class="ago">{{ todo.ago }}</span>
+                                    <a class="important" @click="toggleImportant($event, todo)">
+                                        <i class="fa fa-star" v-show="todo.important"></i>
+                                        <i class="fa fa-star-o" v-show="!todo.important"></i>
+                                    </a>
+                                </div>
+                                <!-- <button class="destroy" @click="removeTodo(todo)"></button> -->
+                            </div>
+                        </li>
+                     </ul>
+                 </div>
+            </section>
+        </div>
+
+        <section v-if="selectedList" class="right_hidden" :class="{active: activeMenu}">
+            <header>
+                <div>
+                    <input type="checkbox" class="toggle" v-model="selectedTodo.completed" />
+                    <label>{{selectedTodo.title}}</label>
+                    <a class="important" @click="toggleImportant($event, selectedTodo)">
+                        <i class="fa fa-star" v-show="selectedTodo.important"></i>
+                        <i class="fa fa-star-o" v-show="!selectedTodo.important"></i>
+                    </a>
+                </div>
+            </header>
+
+            <header class="expire-date-setting">
+                <div>
+                    <label>기한설정</label>
+                    <date-picker 
+                        type="datetime"
+                        v-model="selectedTodo.expireDate" 
+                        format="yyyy-MM-dd HH:mm" 
+                        lang="en"
+                        :time-picker-options="{start: '00:00', step: '00:30',end: '23:30'}"
+                        :not-before="currentDateFormat"
+                        confirm></date-picker>
+                    <!-- <date-picker v-model="selectedTodo.expireDate" placeholder="선택하여 입력해주세요" :config="config"></date-picker> -->
+                </div>
+            </header>
+            <!-- <header class="alarm-date-setting">
+                <div>
+                    <label>알림설정</label>
+                    <date-picker v-model="selectedTodo.alarmDate" :config="config2"></date-picker>
+                </div>
+            </header> -->
+            <div class="content">
+                <textarea
+                    class="form-control note"
+                    placeholder="메모"
+                    @focus="activeMenu=true"
+                    v-model="selectedTodo.note"></textarea>
+            </div>
+
+            <footer>
+                <b-button variant="primary" @click="updateNote(selectedTodo)">저장</b-button>
+                <b-button variant="danger" @click="removeTodo(selectedTodo)">삭제</b-button>
+            </footer>
+        </section>
+    </div>
+</div>

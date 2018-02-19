@@ -12,6 +12,7 @@ const USERS_COLLECTION = 'USERS'
 const LIST_COLLECTION  = 'List'
 const TODO_COLLECTION  = 'Todos'
 const STORAGE_KEY      = 'MY_TODO'
+const PUSH_COLLECTION = 'PUSH'
 
 const store = new Vuex.Store({
     state: {
@@ -47,6 +48,10 @@ const store = new Vuex.Store({
         removeListItem(state, listData){
             state.lists.splice( state.lists.indexOf(listData), 1 )
         },
+        selectList(state, item){
+            item.active = true
+            state.selectedList = item
+        },
 
         showModal(state, show){
             //console.log(state, show);
@@ -55,6 +60,18 @@ const store = new Vuex.Store({
     },
     actions: {
         login(context, payload){
+            const data = {
+                uid: payload.uid,
+                displayName : payload.displayName,
+                email: payload.email ? payload.email : payload.providerData[0].email,
+                token: payload.token
+            }
+            
+            db
+            .collection(USERS_COLLECTION)
+            .doc(payload.uid)
+            .set(data)
+
             context.commit('login', payload)
         },
         logout(context){
@@ -110,7 +127,7 @@ const store = new Vuex.Store({
                 console.log(err);
             })
         },
-        updateeListItem(context, {listItem, data}){
+        updateeListItem(context, listItem){
             let uid = this.state.user.uid
 
             if( !uid ) return
@@ -120,21 +137,20 @@ const store = new Vuex.Store({
             .doc(uid)
             .collection(LIST_COLLECTION)
             .doc(listItem.id)
-            .update(data)
+            .update(listItem)
             .then((snap) => {
-                listItem = data
+                
             }).catch(err => {
-                console.log(err);
+                console.log(err)
             })
         },
         fetchList(context){
             let uid = this.state.user.uid
             if( !uid ) return
 
-            db
-            .collection(USERS_COLLECTION)
-            .doc(uid)
-            .collection(LIST_COLLECTION)
+            var listCollection = db.collection(USERS_COLLECTION).doc(uid).collection(LIST_COLLECTION)
+            
+            listCollection
             .orderBy('createdAt', 'asc')
             .get()
             .then((snap) => {
@@ -143,9 +159,20 @@ const store = new Vuex.Store({
                     let listItem   = doc.data()
                     listItem.id    = doc.id
                     listItem.todos = []
+                    listItem.active = false
                     lists.push(listItem)
+
+                    listCollection.doc(doc.id).collection('Todos').get().then(snap => {
+                        snap.forEach(doc => {
+                            let todo = doc.data()
+                            todo.id = doc.id
+                            todo.ago = moment(todo.createdAt).fromNow()
+                            listItem.todos.push(todo)
+                        })    
+                    })
                 })
                 context.commit('fetchList', lists)
+                context.commit('selectList', lists[0])
 
             }).catch(err => {
                 console.log(err)
@@ -172,6 +199,7 @@ const store = new Vuex.Store({
                     todos.push(todo)
                 })
                 listItem.todos = todos
+                listItem.count = todos.length
             })
             .catch(err => {
                 console.log(err);
@@ -238,6 +266,75 @@ const store = new Vuex.Store({
                 }).catch(err => {
                     reject(err)
                 })
+            })
+        },
+        selectList(context, item){
+            context.commit('selectList', item)
+        },
+        updateToken(context, {user, token}){
+            const data = {
+                email: user.email,
+                displayName: user.displayName,
+                token: token
+            }
+
+            db
+            .collection(USERS_COLLECTION)
+            .doc(user.uid)
+            .update(data)
+            .then(r => {
+                console.log(r)
+            })
+            .catch(err => {
+                console.log(err)
+            })
+        },
+        searchUser(context, email){
+            let currentUser = firebase.auth().currentUser
+
+            return new Promise((resolve, reject) => {
+                db.collection(USERS_COLLECTION).where('email', '==', email)
+                .get()
+                .then(snap => {
+                    let users = []
+                    if( snap.size > 0 ){
+                        snap.forEach((doc) => {
+                            let user = doc.data()
+                            if(doc.id != currentUser.uid) {
+                                users.push(user)
+                            }
+                        })
+                    }
+                    resolve(users)
+                })
+                .catch(err => {
+                    console.log(err)
+                    reject(err)
+                })
+            })
+        },
+        addPushList(context, data){
+            db
+            .collection(PUSH_COLLECTION)
+            .add(data)
+            .then(snap => {
+                console.log(snap)
+            })
+            .catch(err => {
+                console.log(err)
+            })
+        },
+        addWatchingList(context, data){
+            db
+            .collection(USERS_COLLECTION)
+            .doc(data.uid)
+            .collection('WatchingList')
+            .add(data)
+            .then(snap => {
+                console.log(snap)
+            })
+            .catch(err => {
+                console.log(err)
             })
         }
     }

@@ -1,0 +1,225 @@
+/* @import '/static/css/font-awesome.min.css'; */
+/* @import url("//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"); */
+
+#top_nav{
+    background-color: lightgray;
+    apadding:10px;
+    display: flex;
+    border-bottom: 1px solid;
+    height:60px;
+    align-items: center;
+}
+#top_nav .profile_wrap{
+
+}
+#top_nav .profile_wrap a{
+    padding:5px 10px;
+    display: inline-block;
+    text-decoration: none;
+    box-sizing: border-box;
+
+    border-radius:10px;
+}
+#top_nav .profile_wrap a:hover{
+    aoutline: 1px solid;
+    box-shadow: 0 0 0 1px black;
+}
+#top_nav .profile_wrap img{
+    width: 24px;
+}
+
+#todo_wrap{
+    
+    position: relative;
+    height: 100%;
+}
+#todo_wrap > .content {
+    display: flex;
+    position: absolute;
+    top:60px;
+    bottom: 0;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.todo_wrap{
+    overflow-y: auto;
+    flex:1;
+    padding: 10px;
+}
+
+section.left_menu{
+    width: 250px;
+    border-right: 1px solid;
+    display: flex;
+    -webkit-box-orient: vertical;
+    flex-direction: column;
+}
+section.left_menu .list-group {
+    border-radius: 0;
+    display: flex;
+    -webkit-box-orient: vertical;
+    flex-direction: column;
+    overflow-y: auto;
+    box-flex:1;
+    flex: 1;
+}
+section.left_menu .list-group > li,
+section.left_menu .list-group > a,
+section.left_menu .list-group > button{
+    border-radius: 0;
+    cursor: pointer;
+    xborder: 0;
+    xborder-bottom:1px solid rgba(0, 0, 0, 0.125);
+}
+section.left_menu .list-group > li:first-child{
+    border-top: 0;
+}
+section.left_menu .list-group .list-group-item.active{
+
+}
+section.left_menu .list-group .list-group-item .over_due_date{
+    color:red;
+}
+
+section.left_menu .list-group > li .edit_list{
+    position: absolute;
+    top:0;
+    bottom:0;
+    right: 0;
+    width: 34px;
+    background-color: white;
+    opacity: 1;
+    border-left: 1px solid;
+    display: none;
+}
+section.left_menu .list-group > li.active .edit_list {
+    display: block;
+}
+
+section.left_menu .add_list button{
+    border-radius: 0;
+}
+
+.main {
+    margin-top: 20px;
+}
+.todo-list{
+    list-style-type: none;
+    padding:0;
+}
+.todo{
+    border-radius:8px;
+    padding:10px;
+    border: 1px solid;
+    margin-bottom: 10px;
+    position:relative;
+    cursor: pointer;
+}
+
+.todo input {
+    margin-right: 5px;
+}
+.todo .view{
+    display: flex;
+    align-items: center;
+}
+.todo .edit{
+    display: none;
+}
+.todo.editing .view{
+    display: none;
+}
+.todo .view .toggle{
+    aposition: relative;
+    top: 4px;
+}
+.todo .view label{
+    margin: 0;
+    flex: 1;
+    cursor: inherit;
+}
+.todo .view .float_right{
+
+}
+.todo .view .important {
+    afloat: right;
+    margin-right: 10px;
+}
+.todo .view .ago{
+    afloat: right;
+    font-size: 12px;
+}
+.todo.completed .view label{
+    text-decoration: line-through;
+}
+.todo.editing .edit{
+    display: inline-block;
+}
+
+section.right_hidden{
+    background-color: lightgray;
+    border-left: 1px solid;
+    width:0%;
+    transition:width 0.24s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+section.right_hidden.active{
+    width:25%;
+}
+section.right_hidden header{
+    padding: 10px;
+    border-bottom: 1px solid;
+}
+section.right_hidden header > div{
+    display: flex;
+    align-items: center;
+}
+section.right_hidden header .toggle{
+    margin-right: 10px;
+}
+section.right_hidden header label{
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0;
+    flex:1
+}
+section.right_hidden .content {
+    padding: 10px;
+    overflow-y: auto;
+    flex:1
+}
+section.right_hidden .content textarea {
+    height: 100%;
+}
+section.right_hidden footer{
+    background: white;
+    padding: 10px;
+}
+
+/* .expire-date-setting > div{
+    display: flex
+} */
+.expire-date-setting > div > label {
+    font-size:16px !important;
+    flex: none !important;
+}
+.expire-date-setting input{
+    background: none;
+    border:0;
+    box-shadow: none;
+    flex:1
+}
+
+.alarm-date-setting > div > label {
+    font-size:16px !important;
+    flex: none !important;
+}
+.alarm-date-setting input{
+    background: none;
+    border:0;
+    box-shadow: none;
+    flex:1
+}
