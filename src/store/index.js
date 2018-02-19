@@ -13,14 +13,17 @@ const LIST_COLLECTION  = 'List'
 const TODO_COLLECTION  = 'Todos'
 const STORAGE_KEY      = 'MY_TODO'
 const PUSH_COLLECTION = 'PUSH'
+const NOTIFICATION_COLLECTION = 'Notification'
 
 const store = new Vuex.Store({
     state: {
         user: null,
         lists: [],
+        watchingLists: [],
         visibility: 'all',
         selectedList: null,
-        modalShow: false
+        modalShow: false,
+        notifications: []
     },
     getters: {
         isLogined: state => {
@@ -52,10 +55,19 @@ const store = new Vuex.Store({
             item.active = true
             state.selectedList = item
         },
-
+        unSelectList(state){
+            state.selectedList = null
+        },
         showModal(state, show){
             //console.log(state, show);
             state.modalShow = show
+        },
+        updateNotifications(state, notis){
+            //console.log(state, notis)
+            state.notifications = notis
+        },
+        addWatingList(state, list){
+            state.watchingLists = list
         }
     },
     actions: {
@@ -271,6 +283,10 @@ const store = new Vuex.Store({
         selectList(context, item){
             context.commit('selectList', item)
         },
+        unSelectList(context){
+            context.commit('unSelectList')
+        },
+
         updateToken(context, {user, token}){
             const data = {
                 email: user.email,
@@ -300,6 +316,7 @@ const store = new Vuex.Store({
                     if( snap.size > 0 ){
                         snap.forEach((doc) => {
                             let user = doc.data()
+                            user.uid = doc.id
                             if(doc.id != currentUser.uid) {
                                 users.push(user)
                             }
@@ -325,9 +342,11 @@ const store = new Vuex.Store({
             })
         },
         addWatchingList(context, data){
+            let uid = this.state.user.uid
+
             db
             .collection(USERS_COLLECTION)
-            .doc(data.uid)
+            .doc(uid)
             .collection('WatchingList')
             .add(data)
             .then(snap => {
@@ -335,6 +354,68 @@ const store = new Vuex.Store({
             })
             .catch(err => {
                 console.log(err)
+            })
+        },
+        watchingNotifications(context){
+            let uid = this.state.user.uid
+
+            db
+            .collection(USERS_COLLECTION)
+            .doc(uid)
+            .collection(NOTIFICATION_COLLECTION)
+            .onSnapshot(snap => {
+                const notis = []
+                snap.forEach(doc => {
+                    let data = doc.data()
+                    data.id = doc.id
+                    notis.push(data)
+                })
+                context.commit('updateNotifications', notis)
+            })
+        },
+        updateNotification(context, noti){
+            let uid = this.state.user.uid
+
+            db
+            .collection(USERS_COLLECTION)
+            .doc(uid)
+            .collection(NOTIFICATION_COLLECTION)
+            .doc(noti.id)
+            .update(noti)
+        },
+        watchingList(context){
+            let uid = this.state.user.uid
+
+            db
+            .collection(USERS_COLLECTION)
+            .doc(uid)
+            .collection('WatchingList')
+            .get()
+            .then(snap => {
+                let lists = []
+                snap.forEach(doc => {
+                    let data = doc.data()
+
+                    db.doc(data.listId)
+                    .get()
+                    .then(snap => {
+                        let list = snap.data()
+                        
+                        snap.ref.collection('Todos')
+                        .onSnapshot(snap => {
+                            let todos = []
+                            snap.forEach(doc => {
+                                let todo = doc.data()
+                                todos.push(todo)
+                            })
+
+                            list.todos = todos
+                        })
+                        lists.push(list)
+                    })
+                })
+
+                context.commit('addWatingList', lists)
             })
         }
     }

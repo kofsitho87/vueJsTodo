@@ -43,27 +43,25 @@ router.beforeEach((to, from, next) => {
         else {
             next()
 
-            if( !user ) return;
-            messaging.getToken()
-            .then(token => {
-                //서버로 토큰전송
-                const data = {
-                    email: user.email,
-                    displayName: user.displayName,
-                    token: token
-                }
+            //if( !user ) return;
+            // messaging.getToken()
+            // .then(token => {
+            //     //서버로 토큰전송
+            //     const data = {
+            //         token: token
+            //     }
                 
-                db
-                .collection('USERS')
-                .doc(user.uid)
-                .set(data)
-                .catch(err => {
-                    console.log(err)
-                })
-            })
-            .catch(err => {
-                console.log(err)
-            })
+            //     db
+            //     .collection('USERS')
+            //     .doc(user.uid)
+            //     .set(data)
+            //     .catch(err => {
+            //         console.log(err)
+            //     })
+            // })
+            // .catch(err => {
+            //     console.log(err)
+            // })
         }
     })
 

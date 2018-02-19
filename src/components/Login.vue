@@ -10,6 +10,7 @@
 
 <script>
 import firebase from 'firebase'
+const messaging = firebase.messaging()
 
 export default {
     name: 'Login',
@@ -44,14 +45,19 @@ export default {
             var self = this
             auth.signInWithPopup(provider).then(function(result) {
                 // This gives you a Google Access Token.
-                var token = result.credential.accessToken
+                //var token = result.credential.accessToken
                 // The signed-in user info.
-                var user = result.user
-                user.token = token
-
-                self.$store.dispatch('login', user)
+                const user = result.user
+                messaging.getToken().then(token => {
+                    user.token = token
+                    self.$store.dispatch('login', user)
+                })
+                .catch(err => {
+                    console.log(err)
+                    user.token = null
+                    self.$store.dispatch('login', user)
+                })                
                 //location.href = '/'
-                //self.$router.push('TodoList')
             }).catch(err => {
                 console.log(err)
                 alert(err)

@@ -3,14 +3,13 @@
 
 #top_nav{
     background-color: lightgray;
-    apadding:10px;
     display: flex;
     border-bottom: 1px solid;
     height:60px;
     align-items: center;
 }
 #top_nav .profile_wrap{
-
+    flex: 1;
 }
 #top_nav .profile_wrap a{
     padding:5px 10px;
@@ -26,6 +25,9 @@
 }
 #top_nav .profile_wrap img{
     width: 24px;
+}
+#top_nav .header_right {
+    width: 200px;
 }
 
 #todo_wrap{
@@ -100,6 +102,9 @@ section.left_menu .list-group > li.active .edit_list {
 
 section.left_menu .add_list button{
     border-radius: 0;
+}
+section.left_menu .list-group > li.watching-list{
+    background: orange
 }
 
 .main {

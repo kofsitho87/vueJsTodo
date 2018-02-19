@@ -37,6 +37,9 @@ export default {
 
         this.$store.dispatch('setUserData', currentUser)
         this.$store.dispatch('fetchList')
+
+        this.$store.dispatch('watchingNotifications')
+        this.$store.dispatch('watchingList')
     },
     data() {
         this.defaultTodoModel = {
@@ -59,7 +62,8 @@ export default {
             activeMenu: false,
             addListName: '',
             emailKeyword: '',
-            searchUsers: null
+            searchUsers: null,
+            selectedWatingList: null
         }
     },
     computed: {
@@ -68,6 +72,9 @@ export default {
         },
         lists(){
             return this.$store.state.lists
+        },
+        watingLists(){
+            return this.$store.state.watchingLists
         },
         selectedList(){
             return this.$store.state.selectedList
@@ -93,6 +100,30 @@ export default {
             return this.selectedList.todos.filter(todo => {
                 return todo.completed
             })
+        },
+        notifications(){
+            return this.$store.state.notifications
+        },
+        filterByUnReadNotis(){
+            if( this.notifications.length < 1 ) return []
+
+            return this.notifications.filter(noti => {
+                return !noti.read
+            })
+        },
+        filterByReadNotis(){
+            if( this.notifications.length < 1 ) return []
+
+            return this.notifications.filter(noti => {
+                return noti.read
+            })
+        },
+        completeListPercentageByWatingList(){
+            if( !this.selectedWatingList ) return 0
+
+            let todos = this.selectedWatingList.todos 
+            let completedTodosCount = todos.filter(todo => todo.completed).length
+            return Math.round((completedTodosCount / todos.length) * 100)
         }
     },
     filters: {
@@ -222,6 +253,7 @@ export default {
         },
 
         selectList(item){
+            this.selectedWatingList = null
             this.resetActiveList()
             this.$store.dispatch('selectList', item)
             //item.active = true
@@ -311,7 +343,9 @@ export default {
             this.$store
             .dispatch('searchUser', this.emailKeyword)
             .then(users => {
-                //console.log(users)
+                if( users.length < 1 ){
+                    alert('검색된 유저가 없습니다.')
+                }
                 this.searchUsers = users
             })
             .catch(err => {
@@ -324,8 +358,10 @@ export default {
             }
 
             if(!user.token){
+                alert('상대방의 token이 없습니다.')
                 return
             }
+            
 
             const currentUser = firebase.auth().currentUser
             const data = {
@@ -342,11 +378,65 @@ export default {
                 },
                 notification: {
                     title: '님이 프로젝트 더블체킹을 요청했습니다.',
-                    body: '[프로젝트 이름]'
+                    body: `[${this.selectedList.title}]`
+                },
+                data: {
+                    action: 'DOUBLE_CHECKING',
+                    listId: `/USERS/${this.user.uid}/List/${this.selectedList.id}` 
                 }                
             }
 
             this.$store.dispatch('addPushList', data)
+        },
+        confirmNoti(noti){
+            console.log(noti)
+            noti.read = true
+            this.$store.dispatch('updateNotification', noti)
+
+            if(noti.action == 'DOUBLE_CHECKING'){
+                var confirmd = false
+                if( confirm(noti.body + ' 더블체킹하는 것을 수락하시겠습니까?') ){
+                    confirmd = true
+                }
+
+                if( confirmd ){
+                    let data = {
+                        listId: '/USERS/pxN8sqYuXkhkFYhpuYPL0Py57zy1/List/W1fhpir1lWoi9KcwYhu5'
+                    }
+                    //data[noti.data.listId] = 1
+                    this.$store.dispatch('addWatchingList', data)
+                }
+
+                //noti.from
+                // const currentUser = this.user
+                // const data = {
+                //     to: {
+                //         uid: user.uid,
+                //         displayName: user.displayName,
+                //         email: user.email,
+                //         token: user.token
+                //     },
+                //     from: {
+                //         uid: currentUser.uid,
+                //         displayName: currentUser.displayName,
+                //         email: currentUser.email
+                //     },
+                //     notification: {
+                //         title: '님이 프로젝트 더블체킹을 요청했습니다.',
+                //         body: `[${this.selectedList.title}]`
+                //     },
+                //     data: {
+                //         action: 'ALERT'
+                //     }
+                // }
+                //this.$store.dispatch('addPushList', data)
+            }
+        },
+        selectWatchingList(list){
+            this.selectedWatingList = list
+            
+            this.resetActiveList()
+            this.$store.dispatch('unSelectList')
         }
     },
     directives: {

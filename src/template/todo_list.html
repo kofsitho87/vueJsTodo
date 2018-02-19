@@ -49,6 +49,20 @@
             </b-dropdown>
         </div>
         <div class="header_right">
+                <b-dropdown right class="m-3" variant="info" :disabled="notifications.length < 1">
+                    <template slot="button-content">
+                        <span>새로운 알림({{filterByUnReadNotis.length}})</span>
+                    </template>
+                    <div role="group" aria-lableledby="header1">
+                        <b-dropdown-header>확인되지 않은 알림</b-dropdown-header>
+                        <b-dropdown-item-button v-for="noti in filterByUnReadNotis" @click="confirmNoti(noti)">{{noti.title}}</b-dropdown-item-button>
+                    </div>
+                    <div role="group" aria-lableledby="header2">
+                        <b-dropdown-header>확인된 알림</b-dropdown-header>
+                        <b-dropdown-item v-for="noti in filterByReadNotis">{{noti.title}}</b-dropdown-item>
+                    </div>
+                    
+                </b-dropdown>
         </div>  
     </header>
 
@@ -69,19 +83,27 @@
                         <span class="fa fa-pencil" aria-hidden="true"></span>
                     </button>
                 </li>
-                <!-- <a  href="javascript:void(0)"
-                    class="list-group-item"
-                    :class="{ active: item.active }"
-                    v-for="item in lists"
-                    v-on:click.prevent="selectList(item)"
-                    v-on:dblclick.prevent="openEditMode(item)">
-                    {{item.title}}
-                </a> -->
+
+                <li 
+                    class="list-group-item justify-content-between watching-list"
+                    v-for="list in watingLists"
+                    v-on:click.prevent="selectWatchingList(list)">{{ list.title }}</li>
             </ul>
             <div class="add_list">
                 <button class="btn-block btn btn-primary" @click="showAddListItem()">목록추가</button>
             </div>
         </section>
+
+        <div v-if="selectedWatingList" class="todo_wrap">
+            <b-progress height="1.5rem" variant="success" :max="100" show-progress striped :animated="true" class="mb-3">
+                <b-progress-bar :value="completeListPercentageByWatingList">
+                    <strong>{{completeListPercentageByWatingList}}%</strong>
+                </b-progress-bar>
+            </b-progress>
+            <ul>
+                <li v-for="item in selectedWatingList.todos">{{item.title}}</li>
+            </ul>
+        </div>
 
         <div v-if="selectedList" class="todo_wrap">
             <header class="input_header">
@@ -105,9 +127,6 @@
                         <strong>{{completeListPercentage}}%</strong>
                     </b-progress-bar>
                 </b-progress>
-                <!-- <div v-if="selectedList" class="progress" style="margin-bottom:30px;height:24px;">
-                    <div class="progress-bar bg-success" role="progressbar" v-bind:style="{ 'width': '25%' }" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
-                </div> -->
 
                  <ul class="todo-list">
                      <li v-for="todo in filterByImportant"
